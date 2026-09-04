@@ -1,6 +1,6 @@
 import sqlite3
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
 app.secret_key = "super_secret_key"
@@ -24,6 +24,42 @@ def init_db():
             courses TEXT DEFAULT ''
         )
     """)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS quizzes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question TEXT NOT NULL,
+            option_a TEXT NOT NULL,
+            option_b TEXT NOT NULL,
+            option_c TEXT NOT NULL,
+            option_d TEXT NOT NULL,
+            correct_option TEXT NOT NULL
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            score INTEGER NOT NULL,
+            total_questions INTEGER NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    cursor.execute("SELECT COUNT(*) FROM quizzes")
+    if cursor.fetchone()[0] == 0:
+        cursor.executemany('''
+            INSERT INTO quizzes
+                (question, option_a, option_b, option_c, option_d, correct_option)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', [
+            ("What is the unit of resistance?", "Ohm", "Volt", "Ampere", "Watt", "a"),
+            ("What is the unit of current?", "Ohm", "Volt", "Ampere", "Watt", "c"),
+            ("What is the unit of voltage?", "Ohm", "Volt", "Ampere", "Watt", "b"),
+            ("What is the unit of power?", "Ohm", "Volt", "Ampere", "Watt", "d"),
+            ("What is the unit of energy?", "Ohm", "Joule", "Ampere", "Watt", "b"),
+        ])
+
     conn.commit()
     conn.close()
 
@@ -36,7 +72,14 @@ def home():
 def results():
     if "user_id" not in session:
         return redirect(url_for("login"))
-    return render_template("results.html")
+    correct_answers = session.get("correct_answers", 0)
+    total_questions = session.get("total_questions", 5)
+    return render_template(
+        "results.html",
+        score=session.get("score", f"{correct_answers}/{total_questions}"),
+        correct_answers=correct_answers,
+        total_questions=total_questions,
+    )
 
 @app.route("/login")
 def login():
@@ -50,7 +93,10 @@ def register():
 def quiz():
     if "user_id" not in session:
         return redirect(url_for("login"))
-    return render_template("quiz.html")
+    conn = get_db_connection()
+    quizzes = conn.execute("SELECT * FROM quizzes ORDER BY id").fetchall()
+    conn.close()
+    return render_template("quiz.html", quizzes=quizzes)
 
 # Authentication APIs
 @app.route("/api/register", methods=["POST"])
@@ -78,7 +124,7 @@ def api_register():
 
     cursor.execute(
         "INSERT INTO users (name, email, password, dob, gender, courses) VALUES (?, ?, ?, ?, ?, ?)",
-        (name, email, hashed_password, dob, str(gender).strip(), "")
+        (name, email, generate_password_hash(password), dob, str(gender).strip(), "")
     )
     conn.commit()
     conn.close()
@@ -123,6 +169,22 @@ def api_quiz():
         
     user_answers = data.get('answers')
     user_id = session['user_id']
+
+    answer_map = {
+        answer.get("question"): answer.get("answer")
+        for answer in user_answers
+        if isinstance(answer, dict)
+    }
+    conn = get_db_connection()
+    quizzes = conn.execute("SELECT * FROM quizzes ORDER BY id").fetchall()
+    score = sum(
+        answer_map.get(f"q{quiz['id']}") == quiz["correct_option"]
+        for quiz in quizzes
+    )
+    total_questions = len(quizzes)
+    session["correct_answers"] = score
+    session["total_questions"] = total_questions
+    session["score"] = f"{score}/{total_questions}"
     
     recommended_courses = 'Electrical Engineering, Computer Science'
     
@@ -132,12 +194,17 @@ def api_quiz():
         'UPDATE users SET courses = ? WHERE id = ?', 
         (recommended_courses, user_id)
     )
+    cursor.execute(
+        "INSERT INTO results (user_id, score, total_questions) VALUES (?, ?, ?)",
+        (user_id, score, total_questions)
+    )
     conn.commit()
     conn.close()
     
     return jsonify({
         'message': 'Quiz submitted successfully!', 
-        'courses': [c.strip() for c in recommended_courses.split(",")]
+        'courses': [c.strip() for c in recommended_courses.split(",")],
+        'score': f"{score}/{total_questions}"
     }), 200
 
 @app.route("/api/results", methods=["GET"])
@@ -157,6 +224,36 @@ def api_results():
         return jsonify({"courses": courses_list}), 200
     
     return jsonify({"message": "User not found"}), 404
+
+@app.route('/api/quizzes', methods=['POST'])
+def create_quiz():
+    # If you want to require login:
+    # if 'user_id' not in session:
+    #     return jsonify({"message": "Unauthorized"}), 401
+
+    data = request.get_json()
+
+    question = data.get('question')
+    option_a = data.get('option_a')
+    option_b = data.get('option_b')
+    option_c = data.get('option_c')
+    option_d = data.get('option_d')
+    correct_option = data.get('correct_option')
+
+    # Save to SQLite database
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO quizzes (question, option_a, option_b, option_c, option_d, correct_option)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (question, option_a, option_b, option_c, option_d, correct_option))
+    
+    conn.commit()
+    conn.close()
+
+    # Return success response
+    return jsonify({"message": "quiz submitted successfully"}), 201
+
 
 if __name__ == "__main__":
     init_db() 

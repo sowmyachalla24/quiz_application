@@ -1,97 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{url_for('static',filename='css/style.css')}}">
     <title>Quiz Application</title>
 </head>
+
 <body>
     <header>
         <h1>Quiz Application</h1>
-            <p>Test your knowledge with our interactive quizzes!</p>
+        <p>Test your knowledge with our interactive quizzes!</p>
     </header>
     <nav>
         <a href="/">Home</a>
         <a href="/register">Register</a>
         {% if 'username' in session %}
-            <a href="/logout">Logout</a>
+        <a href="/logout">Logout</a>
         {% else %}
-            <a href="/login">Login</a>
+        <a href="/login">Login</a>
         {% endif %}
         <a href="/quiz">Start Quiz</a>
         <a href="/results"> Results</a>
     </nav>
     <main>
         <form id="quiz-form">
-        <h2>Question 1</h2>
-        <p>What is the unit of resistance?</p>
-            <input type="radio" id="q1a" name="q1" value="a">
-            <label for="q1a">a) Ohm</label><br>
-            <input type="radio" id="q1b" name="q1" value="b">
-            <label for="q1b">b) Volt</label><br>
-            <input type="radio" id="q1c" name="q1" value="c">
-            <label for="q1c">c) Ampere</label><br>
-            <input type="radio" id="q1d" name="q1" value="d">
-            <label for="q1d">d) Watt</label><br>
+            {% for quiz in quizzes %}
+            <h2>Question {{ loop.index }}</h2>
+            <p>{{ quiz.question }}</p>
+            {% for option, text in [('a', quiz.option_a), ('b', quiz.option_b), ('c', quiz.option_c), ('d', quiz.option_d)] %}
+            <input type="radio" id="q{{ quiz.id }}{{ option }}" name="q{{ quiz.id }}" value="{{ option }}" required>
+            <label for="q{{ quiz.id }}{{ option }}">{{ option }}) {{ text }}</label><br>
+            {% endfor %}
+            {% endfor %}
+        <button type="submit" value="submit">Submit</button>
         </form>
-        <h2>Question 2</h2>
-        <p>What is the unit of current?</p>
-        <form id="quiz-form">
-            <input type="radio" id="q2a" name="q2" value
-="a">
-            <label for="q2a">a) Ohm </label><br>
-            <input type="radio" id="q2b" name="q2" value    ="b">
-            <label for="q2b">b) Volt</label><br>
-            <input type="radio" id="q2c" name="q2" value="c">
-            <label for="q2c">c) Ampere</label><br>
-            <input type="radio" id="q2d" name="q2" value="d">
-            <label for="q2d">d) Watt</label><br>
-        </form> 
-        <h2>Question 3</h2>
-        <p>What is the unit of voltage?</p>
 
-        <form id="quiz-form">   
-            <input type="radio" id="q3a" name="q3" value="a">
-            <label for="q3a">a) Ohm</label><br>
-            <input type="radio" id="q3b" name="q3" value="b">
-            <label for="q3b">b) Volt</label><br>
-            <input type="radio" id="q3c" name="q3" value="c">
-            <label for="q3c">c) Ampere</label><br>
-            <input type="radio" id="q3d" name="q3" value="d">
-            <label for="q3d">d) Watt</label><br>
-        </form>
-        <h2>Question 4</h2>
-        <p>What is the unit of power?</p>
-        <form id="quiz-form">
-            <input type="radio" id="q4a" name="q4" value="a">
-            <label for="q4a">a) Ohm</label><br>
-            <input type="radio" id="q4b" name="q4" value="b">
-            <label for="q4b">b) Volt</label><br>
-            <input type="radio" id="q4c" name="q4" value="c">
-            <label for="q4c">c) Ampere</label><br>
-            <input type="radio" id="q4d" name="q4" value="d">
-            <label for="q4d">d) Watt</label><br>
-        </form>
-        <h2>Question 5</h2>
-        <p>What is the unit of energy?</p>
-        <form id="quiz-form">
-            <input type="radio" id="q5a" name="q5" value="a">
-            <label for="q5a">a) Ohm</label><br>
-            <input type="radio" id="q5b" name="q5" value="b">
-            <label for="q5b">b) Joule</label><br>
-            <input type="radio" id="q5c" name="q5" value="c">
-            <label for="q5c">c) Ampere</label><br>
-            <input type="radio" id="q5d" name="q5" value="d">
-            <label for="q5d">d) Watt</label><br>
-        </form>
-         <button type="Submit" value="submit">Submit</button>
 
-        
     </main>
     <footer>
-        <p>&copy; 2026 Quiz Application. All rights reserved.</p>   
+        <p>&copy; 2026 Quiz Application. All rights reserved.</p>
     </footer>
-    <script src="{{url_for('static',filename='js/script.js')}}"></script> 
+    <script src="{{url_for('static',filename='js/script.js')}}"></script>
 </body>
+
 </html>

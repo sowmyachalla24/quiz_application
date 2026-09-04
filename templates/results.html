@@ -13,7 +13,7 @@
     <nav>
         <a href="/">Home</a>
         <a href="/register">Register</a>
-        {% if 'user_id ' in session %}
+        {% if 'user_id' in session %}
             <a href="/logout">Logout</a>
         {% else %}
             <a href="/login">Login</a>
@@ -27,10 +27,11 @@
     </header>
     <main>
         <p>Your results will be displayed here.</p>
-        <ul>
-            
-        </ul>
-        <p>Total Score: 4/5</p>
+        <div id="results"></div>
+        <article>
+            <h2>Score: {{ score }}</h2>
+            <p>You answered {{ correct_answers }} out of {{ total_questions }} questions correctly.</p>
+        </article>
     </main>
 
     <footer>
